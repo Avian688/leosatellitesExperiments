@@ -29,6 +29,7 @@ module TcpSinkAppGP extends TcpSinkApp
     parameters:
         serverThreadModuleType = default("leosatellites.application.TcpSinkAppThreadGP");
         bool recordStatistics = default(true);
+        int bytesNeeded = default(0);
         @class("inet::TcpSinkAppGP");
         @display("i=block/sink");
         @statistic[packetReceived](title="packets received"; source=packetReceived; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none; checkSignals=false);

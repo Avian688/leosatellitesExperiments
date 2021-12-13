@@ -7,6 +7,7 @@ import inet.node.inet.WirelessHost;
 import inet.node.inet.AdhocHost;
 import inet.node.inet.StandardHost;
 import ndp.node.StandardHostNdp;
+import raqsac.node.StandardHostRaqsac;
 import ndp.base.RouterNdp;
 import ned.DatarateChannel;
 import ned.IdealChannel;
@@ -17,21 +18,24 @@ module StaticSatellite
 {
     parameters:
         @Sat;
+        int numOfGS;
         @display("p=50,50.305,m,$satPerLine;i=satellit_blue");  
     gates:
-    	// As many ports as aggregation routers.
-    	inout satGate[1]; 
+    	// As many connected satellites.
+    	inout satGate[4]; 
     types:
-        channel ethernetline extends DatarateChannel
+        channel radioIdeal extends DatarateChannel
         {
-            delay = 1us;
+            //delay = 1ms; //max is range is 1123 km - 0.0033 seconds
+            delay = 1ms;
             datarate = 1Gbps; 
         }
 
     submodules:
-		sat: StandardHostNdp {
+		groundStation[numOfGS]: StandardHostNdp {
             // Reach value down.
             // position = index;
+            @display("p=238.04,343.535;r=10;i=device/receiverdish");
             @display("p=80,160,r,80");
             @display("i=device/device");
         }
@@ -41,6 +45,10 @@ module StaticSatellite
           //  forwarding = default(true);
         }
     connections allowunconnected:
-        sat.pppg++ <--> ethernetline <--> switch.pppg++;
-    	switch.pppg++ <--> IdealChannel <--> satGate++;
+        for i=0..sizeof(groundStation)-1 {
+            groundStation[i].pppg++ <--> radioIdeal <--> switch.pppg++;
+        }
+    	for i=0..3 {
+            switch.pppg++ <--> IdealChannel <--> satGate++; 
+        }
 }

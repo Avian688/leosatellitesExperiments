@@ -46,6 +46,7 @@ void CentralScheduler::initialize(int stage)
     const char *rApp = par("receiverAppType");
     if(strcmp(tp, "tcp") == 0){transportProtocol = TCP;}
     else if(strcmp(tp, "ndp") == 0){transportProtocol = NDP;}
+    else if(strcmp(tp, "raqsac") == 0){transportProtocol = RAQSAC;}
     else{EV_FATAL << "Not Valid Transport Protocol!";};
 
     arrivalRate = par("arrivalRate");
@@ -64,7 +65,11 @@ void CentralScheduler::initialize(int stage)
     flowSize = par("flowSize");
     numShortFlows = par("numShortFlows");
     longFlowSize = par("longFlowSize");
-    numOfNodes = par("numOfNodes");
+    //numOfNodes = par("numOfNodes");
+    numOfSatellites = par("numOfNodes");
+    numOfGroundStationsPerNode = par("numOfGS");
+    numOfNodes = numOfSatellites*numOfGroundStationsPerNode;
+
     shuffle = par("shuffle");
     randomGroup = par("randomGroup");
 
@@ -97,10 +102,8 @@ void CentralScheduler::handleMessage(cMessage *msg)
     numshortflowRunningServers = numOfNodes - numlongflowsRunningServers;
     std::cout << "numshortflowRunningServers:  " << numshortflowRunningServers << std::endl;
     std::cout << "numlongflowsRunningServers:  " << numlongflowsRunningServers << std::endl;
-
     generateTM();
     serversLocations();
-
     std::string itsSrc;
     std::string newDest;
 
@@ -131,6 +134,8 @@ void CentralScheduler::serversLocations()
     for (int m = 0; m < numOfNodes; m++) {
         NodeLocation nodeLocation;
         nodeLocation.index = permServers.at(m);
+        nodeLocation.satellite = permServers.at(m) / numOfGroundStationsPerNode;
+        nodeLocation.node = permServers.at(m) % numOfGroundStationsPerNode;
         nodeLocation.numSink = 0;
         nodeLocation.numSession = 0;
         nodeLocationList.push_back(nodeLocation);
@@ -172,12 +177,13 @@ void CentralScheduler::getNewDestRandTM(std::string &itsSrc, std::string &newDes
 // permutation TM
 void CentralScheduler::generateTM()
 {
-    std::cout << "\n\n ******************** generate TM maps.. ********************  \n";
-    for (int i = 0; i < numOfNodes; ++i)
+    std::cout << "\n\n ******************** generate TM maps.. ********************  " << endl;
+    for (int i = 0; i < numOfNodes; ++i){
         permServers.push_back(i);
-    if (shuffle)
+    }
+    if (shuffle){
         std::shuffle(permServers.begin(), permServers.end(), PRNG);
-
+    }
     for (int i = 0; i < numOfNodes; ++i) {
         if (i < numlongflowsRunningServers) {
             permLongFlowsServers.push_back(permServers.at(i));
@@ -185,7 +191,9 @@ void CentralScheduler::generateTM()
         }
         else if (i >= numlongflowsRunningServers && i < numOfNodes - 1) {
             permShortFlowsServers.push_back(permServers.at(i));
-            permMapShortFlows.insert(std::pair<int, int>(permServers.at(i + 1), permServers.at(i)));  // < dest, src >
+            int permServer1 = permServers.at(i + 1);
+            int permServer2 = permServers.at(i);
+            permMapShortFlows.insert(std::pair<int, int>(permServer1, permServer2));  // < dest, src >
         }
         else if (i == numOfNodes - 1) {
 //            permShortFlowsServers.push_back(permServers.at(numlongflowsRunningServers));
@@ -193,24 +201,23 @@ void CentralScheduler::generateTM()
             permMapShortFlows.insert(std::pair<int, int>(permServers.at(numlongflowsRunningServers), permServers.at(i)));  // < dest, src >
         }
     }
-
     std::cout << "permServers:                ";
-    for (std::vector<unsigned int>::iterator it = permServers.begin(); it != permServers.end(); ++it)
+    for (std::vector<int>::iterator it = permServers.begin(); it != permServers.end(); ++it)
         std::cout << ' ' << *it;
     std::cout << '\n';
 
     std::cout << "permLongFlowsServers:       ";
-    for (std::vector<unsigned int>::iterator it = permLongFlowsServers.begin(); it != permLongFlowsServers.end(); ++it)
+    for (std::vector<int>::iterator it = permLongFlowsServers.begin(); it != permLongFlowsServers.end(); ++it)
         std::cout << ' ' << *it;
     std::cout << '\n';
 
     std::cout << "permShortFlowsServers:      ";
-    for (std::vector<unsigned int>::iterator it = permShortFlowsServers.begin(); it != permShortFlowsServers.end(); ++it)
+    for (std::vector<int>::iterator it = permShortFlowsServers.begin(); it != permShortFlowsServers.end(); ++it)
         std::cout << ' ' << *it;
     std::cout << '\n';
 
     std::cout << "permMapLongFlows:                 \n";
-    for (std::map<unsigned int, unsigned int>::iterator iter = permMapLongFlows.begin(); iter != permMapLongFlows.end(); ++iter) {
+    for (std::map<int, int>::iterator iter = permMapLongFlows.begin(); iter != permMapLongFlows.end(); ++iter) {
         cout << "  src " << iter->second << " ==> ";
         cout << "  dest " << iter->first << "\n";
         permMapLongFlowsVec.record(iter->second);
@@ -218,7 +225,7 @@ void CentralScheduler::generateTM()
     }
 
     std::cout << "permMapShortFlows:                 \n";
-    for (std::map<unsigned int, unsigned int>::iterator iter = permMapShortFlows.begin(); iter != permMapShortFlows.end(); ++iter) {
+    for (std::map<int, int>::iterator iter = permMapShortFlows.begin(); iter != permMapShortFlows.end(); ++iter) {
         cout << "   src " << iter->second << " ==> ";
         cout << "   dest " << iter->first << "\n";
         permMapShortFlowsVec.record(iter->second);
@@ -260,7 +267,7 @@ void CentralScheduler::findLocation(unsigned int nodeIndex, std::string &nodeLoc
     while (itt != nodeLocationList.end()) {
         if (itt->index == nodeIndex) {
             std::string networkName = this->getParentModule()->getFullName();
-            nodeLoc = networkName +".satellite[" + std::to_string(itt->index) + "]";
+            nodeLoc = networkName +".satellite[" + std::to_string(itt->satellite) + "].groundStation[" + std::to_string(itt->node) + "]";
             std::cout << nodeLoc << endl;
         }
         itt++;
@@ -283,6 +290,13 @@ std::string CentralScheduler::getApplicationName(bool isClient){
             else{
                 return "ndp.application.ndpapp.NdpSinkApp";
             }
+        case RAQSAC:
+            if(isClient){
+                return "raqsac.application.raqsacapp.RaqsacBasicClientApp";
+            }
+            else{
+                return "raqsac.application.raqsacapp.RaqsacSinkApp";
+            }
         default:
             EV_FATAL << "Not Valid Transport Protocol!";
     }
@@ -297,7 +311,7 @@ void CentralScheduler::scheduleLongFlows()
 
 // iterate permMapLongFlows
 
-    for (std::map<unsigned int, unsigned int>::iterator iter = permMapLongFlows.begin(); iter != permMapLongFlows.end(); ++iter) {
+    for (std::map<int, int>::iterator iter = permMapLongFlows.begin(); iter != permMapLongFlows.end(); ++iter) {
         cout << "\n\n NEW LONGFLOW :)   ";
         cout << "  host(SRC.)= " << iter->second << " ==> " << "  host(DEST.)= " << iter->first << "\n";
 
@@ -311,10 +325,10 @@ void CentralScheduler::scheduleLongFlows()
         cout << "  nodePodRackLoc:  " << iter->second << " == " << source << " ==> " << iter->first << " == " << dest << "\n";
 
         int numApps = setUpDestModule(source,dest, true);
-        setUpSrcModule(source,dest, numApps);
+        setUpSrcModule(source,dest, numApps, true);
     }
 }
-void CentralScheduler::setUpSrcModule(std::string itsSrc, std::string newDest, int newNumTpSinkAppsDest)
+void CentralScheduler::setUpSrcModule(std::string itsSrc, std::string newDest, int newNumTpSinkAppsDest, bool isLongFlow)
 {
     cModule *srcModule = getModuleByPath(itsSrc.c_str());  // const char* c_str Return pointer to the string.
     cModule *tpSrcModule = srcModule->getSubmodule("at");
@@ -328,9 +342,6 @@ void CentralScheduler::setUpSrcModule(std::string itsSrc, std::string newDest, i
     std::string nameTpAppSrc = "app[" + std::to_string(newNumTpSessionAppsSrc - 1) + "]";
     cModule *newSrcAppModule = moduleTypeSrc->create(nameTpAppSrc.c_str(), srcModule);
     newSrcAppModule->par("localAddress").setStringValue(itsSrc);
-    L3Address destination;
-    L3AddressResolver().tryResolve(newDest.c_str(), destination);
-    newSrcAppModule->par("connectAddress").setStringValue(destination.str());
     newSrcAppModule->par("connectPort").setIntValue(80 + newNumTpSinkAppsDest);
 
     int sizeOfFlows = flowSize;
@@ -340,12 +351,38 @@ void CentralScheduler::setUpSrcModule(std::string itsSrc, std::string newDest, i
 
     switch(transportProtocol){
         case TCP:
+            {
+            L3Address destination;
+            L3AddressResolver().tryResolve(newDest.c_str(), destination);
+            newSrcAppModule->par("connectAddress").setStringValue(destination.str());
             newSrcAppModule->par("tOpen").setDoubleValue(simTime().dbl()+ sumArrivalTimes);
             newSrcAppModule->par("tSend").setDoubleValue(simTime().dbl()+ sumArrivalTimes);
-            newSrcAppModule->par("sendBytes").setIntValue(sizeOfFlows*1000);
+            if(isLongFlow){
+                newSrcAppModule->par("sendBytes").setIntValue(longFlowSize*1000);
+            }
+            else{
+                newSrcAppModule->par("sendBytes").setIntValue(sizeOfFlows*1000);
+            }
             break;
+            }
         case NDP:
-            newSrcAppModule->par("numPacketsToSend").setIntValue(sizeOfFlows);
+            newSrcAppModule->par("connectAddress").setStringValue(newDest);
+            newSrcAppModule->par("startTime").setDoubleValue(simTime().dbl() + sumArrivalTimes);
+            if(isLongFlow){
+                newSrcAppModule->par("numPacketsToSend").setIntValue(longFlowSize);
+            }
+            else{
+                newSrcAppModule->par("numPacketsToSend").setIntValue(sizeOfFlows);
+            }
+            break;
+        case RAQSAC:
+            newSrcAppModule->par("connectAddress").setStringValue(newDest);
+            if(isLongFlow){
+                newSrcAppModule->par("numSymbolsToSend").setIntValue(longFlowSize);
+            }
+            else{
+                newSrcAppModule->par("numSymbolsToSend").setIntValue(sizeOfFlows);
+            }
             newSrcAppModule->par("startTime").setDoubleValue(simTime().dbl() + sumArrivalTimes);
             break;
     }
@@ -375,12 +412,27 @@ int CentralScheduler::setUpDestModule(std::string itsSrc, std::string newDest, b
     cModuleType *moduleTypeDest = cModuleType::get(getApplicationName(false).c_str());
     std::string nameTpAppDest = "app[" + std::to_string(newNumTpSinkAppsDest - 1) + "]";
     cModule *newDestAppModule = moduleTypeDest->create(nameTpAppDest.c_str(), destModule);
-    L3Address destination;
-    L3AddressResolver().tryResolve(newDest.c_str(), destination);
-    newDestAppModule->par("localAddress").setStringValue(destination.str());
     newDestAppModule->par("localPort").setIntValue(80 + newNumTpSinkAppsDest);
     if(transportProtocol == TCP){
-            newDestAppModule->par("recordStatistics").setBoolValue(true);
+           L3Address destination;
+           L3AddressResolver().tryResolve(newDest.c_str(), destination);
+           newDestAppModule->par("localAddress").setStringValue(destination.str());
+           newDestAppModule->par("recordStatistics").setBoolValue(!isLongFlow);
+           if(isLongFlow){
+               newDestAppModule->par("bytesNeeded").setIntValue(longFlowSize*1000);
+           }
+           else{
+               newDestAppModule->par("bytesNeeded").setIntValue(flowSize*1000);
+           }
+    }
+    else if(transportProtocol == NDP){
+        newDestAppModule->par("localAddress").setStringValue(newDest);
+        newDestAppModule->par("recordStatistics").setBoolValue(!isLongFlow);
+    }
+    else if(transportProtocol == RAQSAC){
+            newDestAppModule->par("localAddress").setStringValue(newDest);
+            newDestAppModule->par("recordStatistics").setBoolValue(!isLongFlow);
+            newDestAppModule->par("opcode").setIntValue(1);
     }
     cGate *gateTpInDest = tpDestModule->gate("in", newTPGateOutSizeDest - 1);
     cGate *gateTpOutDest = tpDestModule->gate("out", newTPGateOutSizeDest - 1);
@@ -404,7 +456,7 @@ void CentralScheduler::scheduleNewShortFlow(std::string itsSrc, std::string newD
     newArrivalTime = expDistribution.operator()(PRNG);
     sumArrivalTimes = sumArrivalTimes + newArrivalTime;
     int numApps = setUpDestModule(itsSrc,newDest, false);
-    setUpSrcModule(itsSrc,newDest, numApps);
+    setUpSrcModule(itsSrc,newDest, numApps, false);
 }
 
 
@@ -458,7 +510,7 @@ double CentralScheduler::getNewValueFromExponentialDistribution()
 void CentralScheduler::finish()
 {
 
-    for (std::vector<unsigned int>::iterator iter = permServers.begin(); iter != permServers.end(); ++iter) {
+    for (std::vector<int>::iterator iter = permServers.begin(); iter != permServers.end(); ++iter) {
         cout << "  NODE= " << *iter << "  ";
         nodes.record(*iter);
 
@@ -476,9 +528,9 @@ void CentralScheduler::finish()
 
     std::cout << "numshortflowRunningServers:  " << numshortflowRunningServers << std::endl;
     std::cout << "numlongflowsRunningServers:  " << numlongflowsRunningServers << std::endl;
-
+    std::cout << "test reach" << endl;
     std::cout << "permLongFlowsServers:       ";
-    for (std::vector<unsigned int>::iterator it = permLongFlowsServers.begin(); it != permLongFlowsServers.end(); ++it)
+    for (std::vector<int>::iterator it = permLongFlowsServers.begin(); it != permLongFlowsServers.end(); ++it)
         std::cout << ' ' << *it;
     std::cout << '\n';
 
@@ -536,7 +588,10 @@ void CentralScheduler::handleParameterChange(const char *parname)
         std::cout << "======================================  " << "\n";
         std::cout << " num completed shortflows =  " << numCompletedShortFlows << "\n";
         std::cout << "======================================  " << "\n\n\n";
-        scheduleAt(simTime(), stopSimulation);
+
+        if (numCompletedShortFlows == numShortFlows) {
+            scheduleAt(simTime(), stopSimulation);
+        }
     }
 
     if (parname && strcmp(parname, "numCompletedLongFlows") == 0) {

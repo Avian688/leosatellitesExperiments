@@ -26,6 +26,7 @@ simple CentralScheduler
         //  @dynamic(true);
         string trafficMatrixType;
         int numOfNodes;
+        int numOfGS;
         int arrivalRate; //= default(4);
         //        int flowSize @unit(B); //= default(4);
         //        double longFlowSize @unit(B)=  default(10MiB);

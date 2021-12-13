@@ -15,6 +15,7 @@ import inet.visualizer.contract.IIntegratedVisualizer;
 import inet.node.inet.StandardHost;
 import ecmp.node.StandardHostEcmp;
 import ndp.node.StandardHostNdp;
+import raqsac.node.StandardHostRaqsac;
 import inet.node.inet.INetworkNode;
 import inet.common.geometry.common.SimpleGeographicCoordinateSystem;
 import inet.common.geometry.common.OsgGeographicCoordinateSystem;
@@ -43,9 +44,10 @@ network ManhattanStatic
     types:
         channel laserlink extends DatarateChannel
         {
-            delay =  1us;
+            //delay =  1ms;
+            delay =  1ms;
             datarate = 1Gbps;
-        }
+        } 
     submodules:
         visualizer: <default("IntegratedCanvasVisualizer")> like IIntegratedVisualizer if hasVisualizer() {
             @display("p=305.665,67.625`");
@@ -53,7 +55,7 @@ network ManhattanStatic
         configurator: Ipv4NetworkConfiguratorEcmp {
             @display("p=183.94,67.625");
         }
-        satellite[numOfSats]: StandardHostNdp {   //LaserSatellite for using NoradA, Satellite for Ground-Relays using TLE
+        satellite[numOfSats]: StaticSatellite {   //LaserSatellite for using NoradA, Satellite for Ground-Relays using TLE
             parameters:
                 @display("p=50,50.305,m,$satPerLine;i=satellit_blue");
         }
@@ -61,11 +63,17 @@ network ManhattanStatic
             @display("p=704.06,601.0725;i=abstract/person,#17FF39;b=,,rect;is=vl;t=Central flow scheduler");
         }
     connections allowunconnected:
+//        for i=0..satPerLine-1,for j=0..satPerLine-2{  
+//            satellite[(i*satPerLine)+j].pppg++ <--> laserlink <--> satellite[(i*satPerLine)+j+1].pppg++;
+//        }
+//        for i=0..satPerLine-2,for j=0..satPerLine-1{  
+//            satellite[(i*satPerLine)+j].pppg++ <--> laserlink <--> satellite[(i*satPerLine)+j+satPerLine].pppg++;
+//        }
         for i=0..satPerLine-1,for j=0..satPerLine-2{  
-            satellite[(i*satPerLine)+j].pppg++ <--> laserlink <--> satellite[(i*satPerLine)+j+1].pppg++;
+            satellite[(i*satPerLine)+j].satGate++ <--> laserlink <--> satellite[(i*satPerLine)+j+1].satGate++;
         }
         for i=0..satPerLine-2,for j=0..satPerLine-1{  
-            satellite[(i*satPerLine)+j].pppg++ <--> laserlink <--> satellite[(i*satPerLine)+j+satPerLine].pppg++;
+            satellite[(i*satPerLine)+j].satGate++ <--> laserlink <--> satellite[(i*satPerLine)+j+satPerLine].satGate++;
         }
 //		satellite[0].satGate++ <--> laserlink <--> satellite[1].satGate++;
 //		satellite[0].satGate++ <--> laserlink <--> satellite[2].satGate++;

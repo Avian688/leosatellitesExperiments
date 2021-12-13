@@ -37,6 +37,7 @@ class INET_API TcpSinkAppGP : public TcpServerHostApp
     simtime_t tEndAdded;
 
     bool recordStatistics;
+    int bytesNeeded;
     static simsignal_t jitterSig;
   protected:
     virtual void initialize(int stage) override;

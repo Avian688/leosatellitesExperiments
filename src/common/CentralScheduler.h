@@ -26,7 +26,8 @@ namespace inet {
 enum TransportProtocol
 {
     TCP,
-    NDP
+    NDP,
+    RAQSAC
 };
 
 class INET_API CentralScheduler : public cSimpleModule, public ILifecycle
@@ -54,33 +55,35 @@ protected:
     cOutVector matDest; // record all the dest servers of the created short flows
 
     cMessage *startManagerNode;
-    unsigned int IW;
-    unsigned int switchQueueLength;
+    int IW;
+    int switchQueueLength;
     const char *trafficMatrixType; // either "permTM"  or "randTM"
     TransportProtocol transportProtocol;
     bool perFlowEcmp;
     bool perPacketEcmp;
 
-    unsigned int test = 0;
-    unsigned int arrivalRate; // lamda of an exponential distribution (Morteza uses 256 and 2560)
-    unsigned int flowSize;
-    unsigned int numOfNodes;
-    unsigned int numShortFlows;
-    unsigned int longFlowSize;
+    int test = 0;
+    int arrivalRate; // lamda of an exponential distribution (Morteza uses 256 and 2560)
+    int flowSize;
+    int numOfSatellites;
+    int numOfNodes;
+    int numOfGroundStationsPerNode;
+    int numShortFlows;
+    int longFlowSize;
     double percentLongFlowNodes;
-    unsigned int numCompletedShortFlows = 0;
-    unsigned int numCompletedLongFlows = 0;
-    unsigned int numRunningShortFlowsNow = 0;
+    int numCompletedShortFlows = 0;
+    int numCompletedLongFlows = 0;
+    int numRunningShortFlowsNow = 0;
 
     /////????????????????
     cMessage *stopSimulation;
-    std::vector<unsigned int> permServers;
+    std::vector<int> permServers;
 
-    std::vector<unsigned int> permLongFlowsServers;
-    std::vector<unsigned int> permShortFlowsServers;
+    std::vector<int> permLongFlowsServers;
+    std::vector<int> permShortFlowsServers;
 
-    unsigned int numlongflowsRunningServers; // 33% of nodes run long flows
-    unsigned int numshortflowRunningServers;
+    int numlongflowsRunningServers; // 33% of nodes run long flows
+    int numshortflowRunningServers;
 
     struct coreAggMap
     {
@@ -107,8 +110,8 @@ protected:
     }
 
     //  <dest, src>
-    std::map<unsigned int, unsigned int> permMapLongFlows;
-    std::map<unsigned int, unsigned int> permMapShortFlows;
+    std::map<int, int> permMapLongFlows;
+    std::map<int, int> permMapShortFlows;
 
     double sumArrivalTimes = 0;
     double newArrivalTime;
@@ -117,7 +120,9 @@ protected:
 
     struct NodeLocation
     {
+        unsigned int satellite;
         unsigned int index;
+        unsigned int node;
         unsigned int numSink;
         unsigned int numSession;
     };
@@ -170,7 +175,7 @@ protected:
     unsigned int getNewFlowSizeFromWebSearchWorkLoad();
     unsigned int getPriorityValue(unsigned int flowSize);
     std::string getApplicationName(bool isClient);
-    void setUpSrcModule(std::string itsSrc, std::string newDest, int newNumTpSinkAppsDest);
+    void setUpSrcModule(std::string itsSrc, std::string newDest, int newNumTpSinkAppsDest, bool isLongFlow);
     int setUpDestModule(std::string itsSrc, std::string newDest, bool isLongFlow);
 };
 

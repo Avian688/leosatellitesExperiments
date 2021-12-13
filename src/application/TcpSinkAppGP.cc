@@ -27,6 +27,7 @@ void TcpSinkAppGP::initialize(int stage)
 {
     TcpServerHostApp::initialize(stage);
     recordStatistics = par("recordStatistics");
+    bytesNeeded = par("bytesNeeded");
     if (stage == INITSTAGE_LOCAL) {
         bytesRcvd = 0;
         WATCH(bytesRcvd);
@@ -44,7 +45,7 @@ void TcpSinkAppGP::refreshDisplay() const
 
 void TcpSinkAppGP::finish()
 {
-    if(recordStatistics == true){
+    if(recordStatistics == true && bytesRcvd > 0){
         double throughput = 8 * (double) bytesRcvd / (tEndAdded - tStartAdded).dbl();
         double FCT = SIMTIME_DBL(tEndAdded - tStartAdded);
         TcpServerHostApp::finish();
@@ -58,7 +59,6 @@ void TcpSinkAppGP::finish()
 void TcpSinkAppThreadGP::initialize(int stage)
 {
     TcpServerThreadBase::initialize(stage);
-
     if (stage == INITSTAGE_LOCAL) {
         bytesRcvd = 0;
         WATCH(bytesRcvd);
@@ -72,30 +72,44 @@ void TcpSinkAppThreadGP::established()
 
 void TcpSinkAppThreadGP::dataArrived(Packet *pk, bool urgent)
 {
-    if(sinkAppModule->recordStatistics == true){
-        long packetLength = pk->getByteLength();
-        bytesRcvd += packetLength;
-        sinkAppModule->bytesRcvd += packetLength;
+    sinkAppModule->bytesRcvd += pk->getByteLength();
+    if (sinkAppModule->bytesNeeded <= sinkAppModule->bytesRcvd){
+        sinkAppModule->tEndAdded = simTime();
         emit(packetReceivedSignal, pk);
-        if (firstDataReceived == false) {
-            auto data = pk->peekData(); // get all data from the packet
-            tStartAdded = data->getTag<CreationTimeTag>()->getCreationTime();
-            firstDataReceived = true;
-            tEndPacketOne = simTime();
+        if(sinkAppModule->recordStatistics == true){
+            cModule *centralMod =  sinkAppModule->getParentModule()->getModuleByPath("centralScheduler");
+            std::cout << "Central Mod: " << centralMod->str() << endl;
+            if (centralMod && sinkAppModule->recordStatistics == true) {
+                int numFinishedFlows = centralMod->par("numCompletedShortFlows");
+                int newNumFinishedFlows = numFinishedFlows + 1;
+                centralMod->par("numCompletedShortFlows").setIntValue(newNumFinishedFlows);
+                EV_INFO << "TcpSinkAppGP::handleMessage  numCompletedShortFlows " << newNumFinishedFlows << endl;
+            }
         }
-        else{
-            tEndPacketTwo = simTime();
-            double jitter = (tEndPacketTwo - tEndPacketOne).dbl();
-            sinkAppModule->emit(sinkAppModule->jitterSig, jitter);
-            tEndPacketOne = tEndPacketTwo;
-            auto data = pk->peekData();
-            auto regions = data->getAllTags<CreationTimeTag>(); // get all tag regions
-            for (auto& region : regions) { // for each region do
-                auto creationTime = region.getTag()->getCreationTime(); // original time
-                simtime_t startTime = creationTime;
-                if(startTime < tStartAdded){
-                    tStartAdded = startTime;
-                    sinkAppModule->tStartAdded = startTime;
+    }
+    else if(pk->getKind() == TCP_I_DATA || pk->getKind() == TCP_I_URGENT_DATA){
+        if(sinkAppModule->recordStatistics == true){
+            long packetLength = pk->getByteLength();
+            emit(packetReceivedSignal, pk);
+            if (firstDataReceived == false) {
+                auto data = pk->peekData(); // get all data from the packet
+                sinkAppModule->tStartAdded = data->getTag<CreationTimeTag>()->getCreationTime();
+                firstDataReceived = true;
+                tEndPacketOne = simTime();
+            }
+            else{
+                tEndPacketTwo = simTime();
+                double jitter = (tEndPacketTwo - tEndPacketOne).dbl();
+                sinkAppModule->emit(sinkAppModule->jitterSig, jitter);
+                tEndPacketOne = tEndPacketTwo;
+                auto data = pk->peekData();
+                auto regions = data->getAllTags<CreationTimeTag>(); // get all tag regions
+                for (auto& region : regions) { // for each region do
+                    auto creationTime = region.getTag()->getCreationTime(); // original time
+                    simtime_t startTime = creationTime;
+                    if(startTime < sinkAppModule->tStartAdded){
+                        sinkAppModule->tStartAdded = startTime;
+                    }
                 }
             }
         }

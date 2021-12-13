@@ -2,7 +2,7 @@
 # OMNeT++/OMNEST Makefile for $(LIB_PREFIX)leosatellitesExperiments
 #
 # This file was generated with the command:
-#  opp_makemake --make-so -f --deep -KECMP_PROJ=../../ecmp -KINET4_PROJ=../../inet4 -KNDP_PROJ=../../ndp -KOS3_PROJ=../../os3 -DINET_IMPORT -I$$\(OS3_PROJ\)/src -I$$\(INET4_PROJ\)/src -I/usr/include/curl -L$$\(ECMP_PROJ\)/src -L$$\(INET4_PROJ\)/src -L$$\(NDP_PROJ\)/src -L$$\(OS3_PROJ\)/src -lecmp$$\(D\) -lINET$$\(D\) -lndp$$\(D\) -los3$$\(D\)
+#  opp_makemake --make-so -f --deep -KECMP_PROJ=../../ecmp -KINET4_PROJ=../../inet4 -KNDP_PROJ=../../ndp -KOS3_PROJ=../../os3 -KRAQSAC_PROJ=../../raqsac -DINET_IMPORT -I$$\(OS3_PROJ\)/src -I$$\(INET4_PROJ\)/src -I/usr/include/curl -L$$\(ECMP_PROJ\)/src -L$$\(INET4_PROJ\)/src -L$$\(NDP_PROJ\)/src -L$$\(OS3_PROJ\)/src -L$$\(RAQSAC_PROJ\)/src -lecmp$$\(D\) -lINET$$\(D\) -lndp$$\(D\) -los3$$\(D\) -lraqsac$$\(D\)
 #
 
 # Name of target to be created (-o option)
@@ -16,7 +16,7 @@ INCLUDE_PATH = -I$(OS3_PROJ)/src -I$(INET4_PROJ)/src -I/usr/include/curl
 EXTRA_OBJS =
 
 # Additional libraries (-L, -l options)
-LIBS = $(LDFLAG_LIBPATH)$(ECMP_PROJ)/src $(LDFLAG_LIBPATH)$(INET4_PROJ)/src $(LDFLAG_LIBPATH)$(NDP_PROJ)/src $(LDFLAG_LIBPATH)$(OS3_PROJ)/src  -lecmp$(D) -lINET$(D) -lndp$(D) -los3$(D)
+LIBS = $(LDFLAG_LIBPATH)$(ECMP_PROJ)/src $(LDFLAG_LIBPATH)$(INET4_PROJ)/src $(LDFLAG_LIBPATH)$(NDP_PROJ)/src $(LDFLAG_LIBPATH)$(OS3_PROJ)/src $(LDFLAG_LIBPATH)$(RAQSAC_PROJ)/src  -lecmp$(D) -lINET$(D) -lndp$(D) -los3$(D) -lraqsac$(D)
 
 # Output directory
 PROJECT_OUTPUT_DIR = ../out
@@ -57,6 +57,7 @@ ECMP_PROJ=../../ecmp
 INET4_PROJ=../../inet4
 NDP_PROJ=../../ndp
 OS3_PROJ=../../os3
+RAQSAC_PROJ=../../raqsac
 
 #------------------------------------------------------------------------------
 
@@ -81,7 +82,7 @@ include $(CONFIGFILE)
 # Simulation kernel and user interface libraries
 OMNETPP_LIBS = -loppenvir$D $(KERNEL_LIBS) $(SYS_LIBS)
 ifneq ($(TOOLCHAIN_NAME),clangc2)
-LIBS += -Wl,-rpath,$(abspath $(ECMP_PROJ)/src) -Wl,-rpath,$(abspath $(INET4_PROJ)/src) -Wl,-rpath,$(abspath $(NDP_PROJ)/src) -Wl,-rpath,$(abspath $(OS3_PROJ)/src)
+LIBS += -Wl,-rpath,$(abspath $(ECMP_PROJ)/src) -Wl,-rpath,$(abspath $(INET4_PROJ)/src) -Wl,-rpath,$(abspath $(NDP_PROJ)/src) -Wl,-rpath,$(abspath $(OS3_PROJ)/src) -Wl,-rpath,$(abspath $(RAQSAC_PROJ)/src)
 endif
 
 COPTS = $(CFLAGS) $(IMPORT_DEFINES) -DINET_IMPORT $(INCLUDE_PATH) -I$(OMNETPP_INCL_DIR)
