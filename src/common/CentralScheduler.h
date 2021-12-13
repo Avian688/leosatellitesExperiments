@@ -14,10 +14,6 @@
 #include "../../../ndp/src/application/ndpapp/NdpBasicClientApp.h"
 #include "../../../ndp/src/application/ndpapp/NdpSinkApp.h"
 
-//IF DEF SCDP
-#include "../../../scdp/src/application/scdpapp/ScdpBasicClientApp.h"
-#include "../../../scdp/src/application/scdpapp/ScdpSinkApp.h"
-
 #include "inet/common/INETDefs.h"
 #include "inet/common/lifecycle/ILifecycle.h"
 
