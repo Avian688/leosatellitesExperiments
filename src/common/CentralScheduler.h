@@ -66,11 +66,11 @@ protected:
     int numOfGroundStationsPerNode;
     int numShortFlows;
     int longFlowSize;
+    int numOfHops;
     double percentLongFlowNodes;
     int numCompletedShortFlows = 0;
     int numCompletedLongFlows = 0;
     int numRunningShortFlowsNow = 0;
-
     /////????????????????
     cMessage *stopSimulation;
     std::vector<int> permServers;
@@ -141,6 +141,17 @@ protected:
     unsigned int numTimesDecodingFailed = 0;
     unsigned int numTimesDecodingSucceeded = 0;
 
+    class Node {
+    public:
+        int row;
+        int col;
+        int dist;
+        Node(int x, int y, int w)
+            : row(x), col(y), dist(w)
+        {
+        }
+    };
+
 public:
     CentralScheduler()
     {
@@ -166,7 +177,8 @@ protected:
     void scheduleNewShortFlow(std::string itsSrc, std::string newDest);
 
     void permTM(const char *longOrShortFlows);
-
+    int getSatelliteNumber(unsigned int nodeIndex);
+    int shortestPath(int src, int dest);
     void getWebSearchWorkLoad();
     unsigned int getNewFlowSizeFromWebSearchWorkLoad();
     unsigned int getPriorityValue(unsigned int flowSize);

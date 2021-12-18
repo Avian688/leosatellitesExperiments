@@ -38,7 +38,7 @@ simple CentralScheduler
         int seedValue;
         int flowSize;
         int longFlowSize;
-
+		int numOfHops;
         volatile int numRunningShortFlowsNow = default(0);
         int numShortFlows;
         double percentLongFlowNodes;

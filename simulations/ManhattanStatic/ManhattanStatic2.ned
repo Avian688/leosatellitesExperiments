@@ -33,7 +33,7 @@ import leosatellites.base.StaticSatellite;
 // the new mdodels being used such as the SatelliteNetworkConfigurator which will periodically run Dijkstra's
 // algorthm to re establish routes in a dynamic satellite network.
 //
-network ManhattanStatic
+network ManhattanStatic2
 {
     parameters:
         int numOfSats; // Number of satellites
@@ -50,36 +50,21 @@ network ManhattanStatic
         } 
     submodules:
         visualizer: <default("IntegratedCanvasVisualizer")> like IIntegratedVisualizer if hasVisualizer() {
-            @display("p=0,2");
+            @display("p=305.665,67.625`");
         }
         configurator: Ipv4NetworkConfiguratorEcmp {
-            @display("p=0,1");
+            @display("p=183.94,67.625");
         }
         satellite[numOfSats]: StaticSatellite {   //LaserSatellite for using NoradA, Satellite for Ground-Relays using TLE
             parameters:
                 @display("p=50,50.305,m,$satPerLine;i=satellit_blue");
         }
-        centralScheduler: CentralScheduler {
-            @display("p=704.06,601.0725;i=abstract/person,#17FF39;b=,,rect;is=vl;t=Central flow scheduler");
-        }
     connections allowunconnected:
-//        for i=0..satPerLine-1,for j=0..satPerLine-2{  
-//            satellite[(i*satPerLine)+j].pppg++ <--> laserlink <--> satellite[(i*satPerLine)+j+1].pppg++;
-//        }
-//        for i=0..satPerLine-2,for j=0..satPerLine-1{  
-//            satellite[(i*satPerLine)+j].pppg++ <--> laserlink <--> satellite[(i*satPerLine)+j+satPerLine].pppg++;
-//        }
         for i=0..satPerLine-1,for j=0..satPerLine-2{  
             satellite[(i*satPerLine)+j].satGate++ <--> laserlink <--> satellite[(i*satPerLine)+j+1].satGate++;
         }
         for i=0..satPerLine-2,for j=0..satPerLine-1{  
             satellite[(i*satPerLine)+j].satGate++ <--> laserlink <--> satellite[(i*satPerLine)+j+satPerLine].satGate++;
-        }
-        for i=0..satPerLine-1{  
-            satellite[i].satGate++ <--> laserlink <--> satellite[i+(satPerLine*(satPerLine-1))].satGate++;
-        }
-        for i=0..satPerLine-1{  
-            satellite[i*satPerLine].satGate++ <--> laserlink <--> satellite[(i*satPerLine)+satPerLine-1].satGate++;
         }
 //		satellite[0].satGate++ <--> laserlink <--> satellite[1].satGate++;
 //		satellite[0].satGate++ <--> laserlink <--> satellite[2].satGate++;

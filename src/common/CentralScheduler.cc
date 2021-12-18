@@ -2,8 +2,9 @@
 
 #include "inet/common/ModuleAccess.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
+#include "../../../ecmp/src/networklayer/configurator/ipv4/Ipv4NetworkConfiguratorEcmp.h"
 #include <fstream>
-
+#include <queue>
 using namespace std;
 using namespace std::chrono;
 
@@ -65,6 +66,7 @@ void CentralScheduler::initialize(int stage)
     flowSize = par("flowSize");
     numShortFlows = par("numShortFlows");
     longFlowSize = par("longFlowSize");
+    numOfHops = par("numOfHops");
     //numOfNodes = par("numOfNodes");
     numOfSatellites = par("numOfNodes");
     numOfGroundStationsPerNode = par("numOfGS");
@@ -155,9 +157,17 @@ void CentralScheduler::getNewDestRandTM(std::string &itsSrc, std::string &newDes
     std::cout << "******************** getNewDestination RandTM .. ********************  \n";
     unsigned int newDestination = 0;
     unsigned int srcNewDestination = 0;
-    while (newDestination == srcNewDestination) { // the dest should be different from the src
+
+    bool equalHopFound = false;
+    while (newDestination == srcNewDestination || !equalHopFound) { // the dest should be different from the src
         newDestination = permServers.at(numlongflowsRunningServers + (std::rand() % (numshortflowRunningServers)));
         srcNewDestination = permServers.at(numlongflowsRunningServers + (std::rand() % (numshortflowRunningServers)));
+        int satNum1 = getSatelliteNumber(newDestination);
+        int satNum2 = getSatelliteNumber(srcNewDestination);
+        if(shortestPath(satNum1,satNum2) == numOfHops){
+            equalHopFound = true;
+            std::cout << "Shortest path: " << shortestPath(satNum1,satNum2) << endl;
+        }
     }
     std::cout << "@@@ newDestination " << newDestination << " , its src   " << srcNewDestination << "\n";
 
@@ -234,6 +244,68 @@ void CentralScheduler::generateTM()
 
 }
 
+int CentralScheduler::shortestPath(int src, int dest)
+{
+    int gridSize = sqrt(numOfSatellites);
+    int grid[gridSize][gridSize];
+    int val=0;
+    for(int i = 0; i < gridSize; i++){
+        for(int j = 0; j < gridSize ; j++)
+        {
+            grid[i][j]=val;
+            val++;
+        }
+    }
+    Node source(0, 0, 0);
+    bool visited[gridSize][gridSize];
+    for (int i = 0; i < gridSize; i++) {
+        for (int j = 0; j < gridSize; j++)
+        {
+            if (grid[i][j] == '0')
+                visited[i][j] = true;
+            else
+                visited[i][j] = false;
+
+            // Finding source
+            if (grid[i][j] == src)
+            {
+               source.row = i;
+               source.col = j;
+            }
+        }
+    }
+    std::queue<Node> q;
+    q.push(source);
+    visited[source.row][source.col] = true;
+    while (!q.empty()) {
+        Node p = q.front();
+        q.pop();
+        if (grid[p.row][p.col] == dest)
+            return p.dist + 2;
+        if (p.row - 1 >= 0 &&
+            visited[p.row - 1][p.col] == false) {
+            q.push(Node(p.row - 1, p.col, p.dist + 1));
+            visited[p.row - 1][p.col] = true;
+        }
+        if (p.row + 1 < gridSize &&
+            visited[p.row + 1][p.col] == false) {
+            q.push(Node(p.row + 1, p.col, p.dist + 1));
+            visited[p.row + 1][p.col] = true;
+        }
+        if (p.col - 1 >= 0 &&
+            visited[p.row][p.col - 1] == false) {
+            q.push(Node(p.row, p.col - 1, p.dist + 1));
+            visited[p.row][p.col - 1] = true;
+        }
+        if (p.col + 1 < gridSize &&
+            visited[p.row][p.col + 1] == false) {
+            q.push(Node(p.row, p.col + 1, p.dist + 1));
+            visited[p.row][p.col + 1] = true;
+        }
+    }
+    return -1;
+}
+
 void CentralScheduler::getNewDestPremTM(std::string &itsSrc, std::string &newDest)
 {
     std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  \n";
@@ -242,15 +314,23 @@ void CentralScheduler::getNewDestPremTM(std::string &itsSrc, std::string &newDes
 //    int newDestination = test ;
 //    test++;
 //    if(test == 16) test =0;
-
-    int newDestination = permServers.at(numlongflowsRunningServers + (std::rand() % (numshortflowRunningServers)));
-
-    int srcNewDestination = permMapShortFlows.find(newDestination)->second;
-    std::cout << "@@@ newDestination " << newDestination << " , its src   " << srcNewDestination << "\n";
-
-    CentralScheduler::findLocation(newDestination, newDest);
-    CentralScheduler::findLocation(srcNewDestination, itsSrc);
-
+    bool equalHopFound = false;
+    int newDestination = -1;
+    int srcNewDestination = -1;
+    while(!equalHopFound){
+        newDestination = permServers.at(numlongflowsRunningServers + (std::rand() % (numshortflowRunningServers)));
+        srcNewDestination = permMapShortFlows.find(newDestination)->second;
+        CentralScheduler::findLocation(newDestination, newDest);
+        CentralScheduler::findLocation(srcNewDestination, itsSrc);
+        std::list<NodeLocation>::iterator itt;
+        int satNum1 = getSatelliteNumber(newDestination);
+        int satNum2 = getSatelliteNumber(srcNewDestination);
+        if(shortestPath(satNum1,satNum2) == numOfHops){
+            equalHopFound = true;
+            std::cout << "@@@ newDestination " << newDestination << " , its src   " << srcNewDestination << "\n";
+            std::cout << "Shortest path: " << shortestPath(satNum1,satNum2) << endl;
+        }
+    }
     RecordMat recordMat;
     recordMat.recordSrc = srcNewDestination;
     recordMat.recordDest = newDestination;
@@ -260,6 +340,18 @@ void CentralScheduler::getNewDestPremTM(std::string &itsSrc, std::string &newDes
     permMapShortFlowsVector.record(newDestination);
 }
 
+int CentralScheduler::getSatelliteNumber(unsigned int nodeIndex)
+{
+    std::list<NodeLocation>::iterator itt;
+    itt = nodeLocationList.begin();
+    while (itt != nodeLocationList.end()) {
+        if (itt->index == nodeIndex) {
+            return itt->satellite;
+        }
+        itt++;
+    }
+
+}
 void CentralScheduler::findLocation(unsigned int nodeIndex, std::string &nodeLoc)
 {
     std::list<NodeLocation>::iterator itt;
@@ -268,7 +360,6 @@ void CentralScheduler::findLocation(unsigned int nodeIndex, std::string &nodeLoc
         if (itt->index == nodeIndex) {
             std::string networkName = this->getParentModule()->getFullName();
             nodeLoc = networkName +".satellite[" + std::to_string(itt->satellite) + "].groundStation[" + std::to_string(itt->node) + "]";
-            std::cout << nodeLoc << endl;
         }
         itt++;
     }
