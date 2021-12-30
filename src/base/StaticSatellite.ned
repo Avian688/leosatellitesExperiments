@@ -7,6 +7,7 @@ import inet.node.inet.WirelessHost;
 import inet.node.inet.AdhocHost;
 import inet.node.inet.StandardHost;
 import ndp.node.StandardHostNdp;
+import rdp.node.StandardHostRdp;
 import raqsac.node.StandardHostRaqsac;
 import ndp.base.RouterNdp;
 import ned.DatarateChannel;
@@ -32,7 +33,7 @@ module StaticSatellite
         }
 
     submodules:
-		groundStation[numOfGS]: StandardHostNdp {
+		groundStation[numOfGS]: StandardHostRdp {
             // Reach value down.
             // position = index;
             @display("p=238.04,343.535;r=10;i=device/receiverdish");

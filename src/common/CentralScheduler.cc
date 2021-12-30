@@ -47,6 +47,7 @@ void CentralScheduler::initialize(int stage)
     const char *rApp = par("receiverAppType");
     if(strcmp(tp, "tcp") == 0){transportProtocol = TCP;}
     else if(strcmp(tp, "ndp") == 0){transportProtocol = NDP;}
+    else if(strcmp(tp, "rdp") == 0){transportProtocol = RDP;}
     else if(strcmp(tp, "raqsac") == 0){transportProtocol = RAQSAC;}
     else{EV_FATAL << "Not Valid Transport Protocol!";};
 
@@ -159,6 +160,9 @@ void CentralScheduler::getNewDestRandTM(std::string &itsSrc, std::string &newDes
     unsigned int srcNewDestination = 0;
 
     bool equalHopFound = false;
+    if(numOfHops == 0){
+        equalHopFound = true;
+    }
     while (newDestination == srcNewDestination || !equalHopFound) { // the dest should be different from the src
         newDestination = permServers.at(numlongflowsRunningServers + (std::rand() % (numshortflowRunningServers)));
         srcNewDestination = permServers.at(numlongflowsRunningServers + (std::rand() % (numshortflowRunningServers)));
@@ -381,6 +385,13 @@ std::string CentralScheduler::getApplicationName(bool isClient){
             else{
                 return "ndp.application.ndpapp.NdpSinkApp";
             }
+        case RDP:
+            if(isClient){
+                return "rdp.application.rdpapp.RdpBasicClientApp";
+            }
+            else{
+                return "rdp.application.rdpapp.RdpSinkApp";
+            }
         case RAQSAC:
             if(isClient){
                 return "raqsac.application.raqsacapp.RaqsacBasicClientApp";
@@ -466,6 +477,16 @@ void CentralScheduler::setUpSrcModule(std::string itsSrc, std::string newDest, i
                 newSrcAppModule->par("numPacketsToSend").setIntValue(sizeOfFlows);
             }
             break;
+        case RDP:
+            newSrcAppModule->par("connectAddress").setStringValue(newDest);
+            newSrcAppModule->par("startTime").setDoubleValue(simTime().dbl() + sumArrivalTimes);
+            if(isLongFlow){
+                newSrcAppModule->par("numPacketsToSend").setIntValue(longFlowSize);
+            }
+            else{
+                newSrcAppModule->par("numPacketsToSend").setIntValue(sizeOfFlows);
+            }
+            break;
         case RAQSAC:
             newSrcAppModule->par("connectAddress").setStringValue(newDest);
             if(isLongFlow){
@@ -517,6 +538,10 @@ int CentralScheduler::setUpDestModule(std::string itsSrc, std::string newDest, b
            }
     }
     else if(transportProtocol == NDP){
+        newDestAppModule->par("localAddress").setStringValue(newDest);
+        newDestAppModule->par("recordStatistics").setBoolValue(!isLongFlow);
+    }
+    else if(transportProtocol == RDP){
         newDestAppModule->par("localAddress").setStringValue(newDest);
         newDestAppModule->par("recordStatistics").setBoolValue(!isLongFlow);
     }

@@ -23,6 +23,7 @@ enum TransportProtocol
 {
     TCP,
     NDP,
+    RDP,
     RAQSAC
 };
 

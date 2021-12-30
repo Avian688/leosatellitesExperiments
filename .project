@@ -8,6 +8,7 @@
 		<project>ndp</project>
 		<project>os3</project>
 		<project>raqsac</project>
+		<project>rdp</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
